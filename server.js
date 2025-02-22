@@ -1,10 +1,32 @@
 const express = require("express");
-const { createServer } = require("http");
+const { createServer } = require("https");
 const { Server } = require("socket.io");
 const cors = require("cors");
+const fs = require("fs");
 
 const app = express();
-const server = createServer(app);
+
+let server;
+
+try {
+    // Try loading SSL certificates
+    const cts = {
+        cert: fs.readFileSync("fullchain.pem"),
+        key: fs.readFileSync("privkey.pem"),
+    };
+
+    // If SSL certs exist, start an HTTPS server
+    server = createServer(cts, app);
+    console.log("🔒 HTTPS Server running...");
+} catch (err) {
+    console.warn("⚠️ SSL certificates not found, falling back to HTTP.");
+
+    // If SSL fails, start an HTTP server
+    const { createServer } = require("http"); // HTTP module
+    server = createServer(app);
+    console.log("🌐 HTTP Server running...");
+}
+
 const io = new Server(server, {
     cors: {
         origin: "*",
@@ -36,6 +58,5 @@ io.on("connection", (socket) => {
         console.log("User disconnected");
     });
 });
-
 const PORT = process.env.PORT || 4000;
 server.listen(PORT, () => console.log(`WebSocket Server running on port ${PORT}`));
